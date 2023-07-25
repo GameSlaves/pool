@@ -5,4 +5,4 @@ jobs:
     pypi_publish:
       runs-on: ubuntu-latest
       steps:
-        - run: cd Dev/lib/pool && maturin publish
+        - run: maturin publish
