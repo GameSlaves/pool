@@ -1,8 +1,0 @@
-name: Lib_pool_pypi
-on: push
-
-jobs:
-    pypi_publish:
-      runs-on: ubuntu-latest
-      steps:
-        - run: maturin publish
