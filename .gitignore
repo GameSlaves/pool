@@ -16,3 +16,4 @@ Cargo.lock
 
 # USER CONFIG
 test/venv/
+build/
