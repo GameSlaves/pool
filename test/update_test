@@ -1,0 +1,4 @@
+cd ..
+rm -rf ./build/*
+maturin build -o build
+pip3 install ./build/* --force-reinstall
