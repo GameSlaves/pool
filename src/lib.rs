@@ -1,13 +1,17 @@
-use pyo3::prelude::*;
+use std::borrow::BorrowMut;
+
+use pyo3::{prelude::*, callback::IntoPyCallbackOutput};
 
 #[pymodule]
 #[pyo3(name = "game_lib_pool")]
 pub fn game_lib_pool(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Pool>()?;
     m.add_class::<PoolRef>()?;
+    m.add_class::<PoolIter>()?;
     Ok(())
 }
 
+#[derive(Debug, Clone)]
 #[pyclass]
 pub struct Pool{
     v: Vec<PyObject>,
@@ -81,6 +85,11 @@ impl Pool{
         self.v[this_index].clone()
     }
 
+    pub fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<PoolIter>>{
+        let iter = PoolIter { inner: slf.v.clone().into_iter() };
+        return Py::new(slf.py(), iter);
+    }
+
     /* 
     pub fn log(&self){
         println!("{:?}", self.v);
@@ -105,5 +114,22 @@ impl PoolRef{
 
     pub fn is_removed(&self) -> bool{
         self.key.is_none()
+    }
+}
+
+#[derive(Debug, Clone)]
+#[pyclass]
+pub struct PoolIter{
+    inner: std::vec::IntoIter<PyObject>,
+}
+
+#[pymethods]
+impl PoolIter{
+    pub fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    pub fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
+        slf.inner.next()
     }
 }
