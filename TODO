@@ -1,0 +1,3 @@
+# Pool
+* key를 PyObject로 하고 reference hold / remove시 수정
+* empty() 구현

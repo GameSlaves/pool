@@ -25,7 +25,7 @@ print(a.get(b2))
 print(a.get(b3))
 print(a.get(b4))
 print(a.get(b5))
-print('-------should be 1,2,3,4,5---------')
+print('-------should be 1,2,3,4,5 (orderless)---------')
 
 for x in a:
     print(x)
