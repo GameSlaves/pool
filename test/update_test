@@ -1,4 +1,4 @@
 cd ..
 rm -rf ./build/*
-maturin build -o build
+maturin build -o build -i "C:\Python\Python311\python.exe"
 pip3 install ./build/* --force-reinstall

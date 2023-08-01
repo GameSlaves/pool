@@ -13,9 +13,7 @@ pub fn game_lib_pool(_py: Python, m: &PyModule) -> PyResult<()> {
 #[pyclass]
 pub struct Pool{
     v: Vec<PyObject>,
-    index_to_key_dict: Vec<PoolKey>,
-    index_dict: Vec<usize>,
-    usable_keys: Vec<PoolKey>
+    keys: Vec<Py<PoolRef>>
 }
 
 #[pymethods]
@@ -24,62 +22,45 @@ impl Pool{
     pub fn new() -> Self {
         Self{
             v: Vec::new(),
-            index_to_key_dict: Vec::new(),
-            index_dict: Vec::new(),
-            usable_keys: Vec::new(),
+            keys: Vec::new()
         }
     }
 
-    pub fn push(&mut self, elem: PyObject) -> PoolRef{
+    pub fn push(&mut self, elem: PyObject) -> Py<PoolRef>{
         let this_index = self.v.len();
+        let py_key: Py<PoolRef> = Python::with_gil(|py| {
+            return Py::new(py, PoolRef::new(this_index));
+        }).unwrap();
+
         self.v.push(elem);
+        self.keys.push(py_key.clone());
 
-        if self.usable_keys.is_empty(){
-            let this_key = PoolKey(this_index);
-
-            self.index_dict.push(this_index);
-            self.index_to_key_dict.push(this_key);
-
-            return PoolRef::new(this_key);
-        }else{
-            let this_key = self.usable_keys.pop().unwrap();
-
-            self.index_dict[this_key.0] = this_index;
-            self.index_to_key_dict.push(this_key);
-            
-            return PoolRef::new(this_key);
-        }
+        return py_key;
     }
 
-    pub fn remove(&mut self, reference: &mut PoolRef){
-        assert!(reference.key.is_some());
-
-        let this_key = reference.key.unwrap();
-        let this_index = self.index_dict[this_key.0];
-
-        if self.v.len() == 1{
-            self.usable_keys.push(this_key);
-            self.v.pop().unwrap();
-            return;
-        }
-
-        let last_index = self.v.len() - 1;
-        let last_key = self.index_to_key_dict[last_index];
+    pub fn remove(&mut self, reference: Py<PoolRef>){
+        let mut this_index = 0;
+        Python::with_gil(|py| {
+            this_index = reference.borrow(py).key.expect("using dropped key");
+            reference.borrow_mut(py).key = None;
+        });
 
         self.v.swap_remove(this_index);
-        self.index_to_key_dict.pop();
-
-        self.index_dict[last_key.0] = this_index;
-        self.index_to_key_dict[this_index] = last_key;
-        self.usable_keys.push(this_key);
-        reference.key = None
+        self.keys.swap_remove(this_index);
+        
+        if self.v.len() > this_index{
+            Python::with_gil(|py| {
+                self.keys[this_index].borrow_mut(py).key = Some(this_index);
+            });
+        }
     }
 
-    pub fn get(&mut self, reference: &mut PoolRef) -> PyObject{
-        assert!(reference.key.is_some());
+    pub fn get(&mut self, reference: Py<PoolRef>) -> PyObject{
+        let mut this_index = 0;
+        Python::with_gil(|py| {
+            this_index = reference.borrow(py).key.unwrap();
+        });
 
-        let this_key = reference.key.unwrap();
-        let this_index = self.index_dict[this_key.0];
         self.v[this_index].clone()
     }
 
@@ -87,26 +68,15 @@ impl Pool{
         let iter = PoolIter { inner: slf.v.clone().into_iter() };
         return Py::new(slf.py(), iter);
     }
-
-    /* 
-    pub fn log(&self){
-        println!("{:?}", self.v);
-        println!("index_dict: {:?}", self.index_dict);
-        println!("index_to_key_dict: {:?}", self.index_to_key_dict);
-        println!("usable_keys: {:?}", self.usable_keys);
-    }*/
 }
-
-#[derive(Debug, Clone, Copy)]
-struct PoolKey(usize);
 
 #[pyclass]
 pub struct PoolRef{
-    key: Option<PoolKey>,
+    key: Option<usize>,
 }
 
 impl PoolRef{
-    fn new(key: PoolKey) -> Self{
+    fn new(key: usize) -> Self{
         Self {key: Some(key)}
     }
 
